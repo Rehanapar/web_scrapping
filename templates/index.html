@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Business Finder</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 8px; border: 1px solid #ccc; text-align: left; }
+        th { background-color: #f2f2f2; }
+        input { padding: 5px; margin: 5px; }
+        .form-section { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h2>📍 Business Search by Category and PIN</h2>
+    <form method="POST">
+        <div class="form-section">
+            <label>Category:</label>
+            <input type="text" name="category" required>
+            <label>PIN Code:</label>
+            <input type="text" name="pin" required>
+            <button type="submit">Search</button>
+        </div>
+    </form>
+
+    {% if results %}
+    <h3>Results</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                
+                <th>Rating</th>
+                
+               
+                
+                <th>Website</th>
+                <th>Google Maps</th>
+                <th>Product/Service</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in results %}
+            <tr>
+                <td>{{ r.name }}</td>
+                <td>{{ r.email }}</td>
+                <td>{{ r.phone }}</td>
+                <td>{{ r.address }}</td>
+                <td>{{ r.rating }}</td>
+                
+                
+                <td>
+                    {% if r.website and r.website != 'N/A' and r.website.startswith('http') %}
+                      <a href="{{ r.website }}" target="_blank">Visit</a>
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                <td><a href="{{ r.gmap_link }}" target="_blank">View</a></td>
+                <td>{{ r.services }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</body>
+</html>
