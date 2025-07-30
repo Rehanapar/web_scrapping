@@ -2,11 +2,18 @@ from flask import Flask, render_template, request
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import WebDriverException
+# from selenium.common.exceptions import WebDriverException
 from bs4 import BeautifulSoup
 import time
 import requests
 import re
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+import os
+import csv
+from datetime import datetime
+
 
 app = Flask(__name__)
 
@@ -44,22 +51,36 @@ def scrape_google_maps(category, pin_code, max_results=100):
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-
-    driver = webdriver.Chrome(options=options)
-
+    options.add_argument("--log-level=3")
+    service = Service(log_path=os.devnull)
+    driver = webdriver.Chrome(options=options, service=service)
+   
+    wait = WebDriverWait(driver, 10)
+ 
     query = f"{category} near {pin_code}"
     maps_url = f"https://www.google.com/maps/search/{query.replace(' ', '+')}/"
     driver.get(maps_url)
-    time.sleep(5)
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "Nv2PK")))
 
-    for _ in range(5):  # Scroll to load more results
-        driver.execute_script("window.scrollBy(0, 1000);")
+    scrollable_div = wait.until(EC.presence_of_element_located((By.XPATH, '//div[@role="feed"]')))
+    prev_count = 0
+
+    for _ in range(20):  # Scroll to load more results
+        # scrollable_div = driver.find_element(By.CLASS_NAME, "m6QErb.DxyBCb.kA9KIf.dS8AEf.ecceSd")  # May change; inspect DOM
+        driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
+
+        # driver.execute_script("window.scrollBy(0, 1000);")
         time.sleep(2)
 
-    results = []
-    listings = driver.find_elements(By.CLASS_NAME, "Nv2PK")
+        listings = driver.find_elements(By.CLASS_NAME, "Nv2PK")
+        if len(listings) == prev_count:
+            break
+        prev_count = len(listings)
 
-    for item in listings[:max_results]:
+    results = []
+    listings = driver.find_elements(By.CLASS_NAME, "Nv2PK")[:max_results]
+
+    for item in listings:
         try:
             name = item.find_element(By.CLASS_NAME, "qBF1Pd").text
         except:
@@ -101,6 +122,19 @@ def scrape_google_maps(category, pin_code, max_results=100):
             "services": product_service
         })
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_category = re.sub(r'\W+', '_', category.lower())
+    csv_file = f"static/{safe_category}_{timestamp}.csv"
+    os.makedirs("static", exist_ok=True)
+ 
+    with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=[
+            "name", "address", "rating", "email", "phone",
+            "category", "website", "gmap_link", "services"
+        ])
+        writer.writeheader()
+        writer.writerows(results)
+
     driver.quit()
     return results
 
@@ -116,6 +150,35 @@ def index():
 if __name__ == "__main__":
     app.run(debug=True)
             
+
+
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
