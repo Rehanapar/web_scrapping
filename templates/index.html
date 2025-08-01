@@ -17,7 +17,7 @@
         <div class="form-section">
             <label>Category:</label>
             <input type="text" name="category" required>
-            <label>PIN Code:</label>
+            <label>PIN Code/Location:</label>
             <input type="text" name="pin" required>
             <button type="submit">Search</button>
         </div>
@@ -28,9 +28,13 @@
     <table>
         <thead>
             <tr>
+                <th>Category</th>
+                <th>Pin Code/Location</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
+                <!-- <th>City</th>
+                <th>State</th> -->
                 <th>Address</th>
                 
                 <th>Rating</th>
@@ -40,14 +44,20 @@
                 <th>Website</th>
                 <th>Google Maps</th>
                 <th>Product/Service</th>
+                <th>C_ID</th>
             </tr>
         </thead>
         <tbody>
             {% for r in results %}
             <tr>
+                <td>{{ r.category }}</td>
+                <td>{{ r.pin_code }}</td>
+                
                 <td>{{ r.name }}</td>
                 <td>{{ r.email }}</td>
                 <td>{{ r.phone }}</td>
+                <!-- <td>{{ r.city }}</td>
+                <td>{{ r.state }}</td> -->
                 <td>{{ r.address }}</td>
                 <td>{{ r.rating }}</td>
                 
@@ -61,6 +71,7 @@
                   </td>
                 <td><a href="{{ r.gmap_link }}" target="_blank">View</a></td>
                 <td>{{ r.services }}</td>
+                <td>{{ r.cid }}</td>
             </tr>
             {% endfor %}
         </tbody>
