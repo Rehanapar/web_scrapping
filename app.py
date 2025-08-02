@@ -10,6 +10,7 @@ import re
 import os
 import csv
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 
@@ -42,6 +43,16 @@ def extract_about_us_content(website_url):
         pass
     return "N/A"
 
+def fetch_website_data(entry):
+    url = entry["website"]
+    if url == "N/A":
+        entry["email"] = "N/A"
+        entry["services"] = "N/A"
+        return entry
+    entry["email"] = extract_email_from_website(url)
+    entry["services"] = extract_about_us_content(url)
+    return entry
+
 def scrape_google_maps(category, pin_code, max_results=100):
     options = uc.ChromeOptions()
     options.headless = True
@@ -50,6 +61,9 @@ def scrape_google_maps(category, pin_code, max_results=100):
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--log-level=3")
     options.add_argument("user-agent=Mozilla/5.0")
+    options.page_load_strategy = 'eager'
+    prefs = {"profile.managed_default_content_settings.images": 2}
+    options.add_experimental_option("prefs", prefs)
 
     driver = uc.Chrome(options=options)
 
@@ -63,13 +77,20 @@ def scrape_google_maps(category, pin_code, max_results=100):
     scrollable_div = wait.until(EC.presence_of_element_located((By.XPATH, '//div[@role="feed"]')))
     prev_count = 0
 
-    for _ in range(20):
+    start_time = datetime.now()
+    timeout = 30  # seconds
+
+    while (datetime.now() - start_time).total_seconds() < timeout:
         driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
-        time.sleep(2)
+        time.sleep(0.5)
         listings = driver.find_elements(By.CLASS_NAME, "Nv2PK")
-        if len(listings) == prev_count:
+        if len(listings) > prev_count:
+            prev_count = len(listings)
+            start_time = datetime.now()
+        if len(listings) >= max_results:
             break
-        prev_count = len(listings)
+
+
 
     results = []
     listings = driver.find_elements(By.CLASS_NAME, "Nv2PK")[:max_results]
@@ -123,8 +144,7 @@ def scrape_google_maps(category, pin_code, max_results=100):
 
         
 
-        product_service = extract_about_us_content(website_url) if website_url != "N/A" else "N/A"
-        email = extract_email_from_website(website_url) if website_url != "N/A" else "N/A"
+        
         phone = extract_phone_from_text(item.text)
 
         results.append({
@@ -134,13 +154,17 @@ def scrape_google_maps(category, pin_code, max_results=100):
             "address": address,
             
             "rating": rating,
-            "email": email,
+            "email": "N/A",
             "phone": phone,
             "website": website_url,
             "gmap_link": maps_url,
-            "services": product_service,
+            "services": "N/A",
             "cid": cid
         })
+
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        results = list(executor.map(fetch_website_data, results))
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_category = re.sub(r'\W+', '_', category.lower())
@@ -170,11 +194,6 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
-            
-
 
 
 
